@@ -75,6 +75,10 @@ const buildApp = (sessionMiddleware) => {
   });
 
   app.use((error, req, res, next) => {
+    if (res.headersSent) {
+      return next(error);
+    }
+
     applyCorsHeaders(req, res, env);
 
     if (error.message === "CORS origin not allowed") {
