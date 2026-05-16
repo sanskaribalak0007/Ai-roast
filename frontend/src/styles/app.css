@@ -66,3 +66,47 @@ body {
   font-weight: 600;
   color: var(--ink);
 }
+
+.otp-email-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.16);
+}
+
+.otp-email-banner small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+
+.otp-email-banner strong {
+  display: block;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.otp-email-banner span {
+  flex-shrink: 0;
+  min-width: 62px;
+  text-align: center;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.otp-resend-button {
+  align-self: flex-start;
+  color: var(--accent-strong);
+}
+
+.otp-resend-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}

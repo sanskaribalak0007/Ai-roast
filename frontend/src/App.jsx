@@ -33,6 +33,7 @@ function App() {
   const [contactError, setContactError] = useState("");
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [loadingContact, setLoadingContact] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
 
   const [history, setHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState("");
@@ -109,6 +110,18 @@ function App() {
 
     loadSharedChat();
   }, [route]);
+
+  useEffect(() => {
+    if (otpCountdown <= 0) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setOtpCountdown((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [otpCountdown]);
 
   useEffect(() => {
     if (!session.user) {
@@ -240,9 +253,34 @@ function App() {
   const handleSwitchAuthMode = (mode) => {
     setAuthMode(mode);
     setAuthStep("");
+    setOtpCountdown(0);
     setAuthError("");
     setAuthNotice("");
     setAuthForm((current) => ({ ...current, otp: "" }));
+  };
+
+  const handleResendRegisterOtp = async () => {
+    setLoadingAuth(true);
+    setAuthError("");
+    setAuthNotice("");
+
+    try {
+      const response = await api.register({
+        name: authForm.name,
+        email: authForm.email,
+        password: authForm.password
+      });
+
+      if (response.otpRequired) {
+        setAuthStep("register-otp");
+        setOtpCountdown(60);
+        setAuthNotice(response.message);
+      }
+    } catch (error) {
+      setAuthError(error.message);
+    } finally {
+      setLoadingAuth(false);
+    }
   };
 
   const handleForgotChange = (event) => {
@@ -277,11 +315,13 @@ function App() {
 
         if (response.otpRequired) {
           setAuthStep("register-otp");
+          setOtpCountdown(60);
           setAuthNotice(response.message);
         } else {
           setAuthNotice(response.message);
           setAuthMode("login");
           setAuthStep("");
+          setOtpCountdown(0);
           setAuthForm({
             ...initialAuthForm,
             email: authForm.email
@@ -296,6 +336,7 @@ function App() {
         setSession({ checked: true, user: response.user });
         setStatusLine("Session secured. Let the roasting begin.");
         setAuthStep("");
+        setOtpCountdown(0);
       }
     } catch (error) {
       setAuthError(error.message);
@@ -604,6 +645,7 @@ function App() {
         authError={authError}
         authForm={authForm}
         authMode={authMode}
+        otpCountdown={otpCountdown}
         authStep={authStep}
         authNotice={authNotice}
         footer={footer}
@@ -613,6 +655,7 @@ function App() {
         onForgotChange={handleForgotChange}
         onForgotPassword={handleForgotPassword}
         onRegisterOrLogin={handleRegisterOrLogin}
+        onResendRegisterOtp={handleResendRegisterOtp}
         onSwitchAuthMode={handleSwitchAuthMode}
         publicNav={publicNav}
       />

@@ -3,7 +3,9 @@ function AuthPage({
   publicNav,
   authMode,
   authStep,
+  otpCountdown,
   onSwitchAuthMode,
+  onResendRegisterOtp,
   authForm,
   forgotForm,
   onAuthChange,
@@ -81,14 +83,31 @@ function AuthPage({
               <input name="password" onChange={onAuthChange} placeholder="Password" type="password" value={authForm.password} />
 
               {waitingForRegisterOtp ? (
-                <input
-                  inputMode="numeric"
-                  maxLength={6}
-                  name="otp"
-                  onChange={onAuthChange}
-                  placeholder="Enter 6-digit OTP"
-                  value={authForm.otp}
-                />
+                <>
+                  <div className="otp-email-banner">
+                    <div>
+                      <small>OTP sent to</small>
+                      <strong>{authForm.email}</strong>
+                    </div>
+                    <span>{otpCountdown}s</span>
+                  </div>
+                  <input
+                    inputMode="numeric"
+                    maxLength={6}
+                    name="otp"
+                    onChange={onAuthChange}
+                    placeholder="Enter 6-digit OTP"
+                    value={authForm.otp}
+                  />
+                  <button
+                    className="text-button otp-resend-button"
+                    disabled={loadingAuth || otpCountdown > 0}
+                    onClick={onResendRegisterOtp}
+                    type="button"
+                  >
+                    {otpCountdown > 0 ? `Resend available in ${otpCountdown}s` : "Resend OTP"}
+                  </button>
+                </>
               ) : null}
 
               <button className="primary-button" disabled={loadingAuth} type="submit">

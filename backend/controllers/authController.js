@@ -9,6 +9,7 @@ const env = require("../config/env");
 const { buildAccessState, ensureWeeklyCredits } = require("../services/usageService");
 
 const OTP_TTL_MS = 1000 * 60 * 10;
+const APP_NAME = "Roast & Boast AI";
 
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
 const createOtpCode = () => String(crypto.randomInt(100000, 1000000));
@@ -17,26 +18,88 @@ const buildOtpExpiry = () => new Date(Date.now() + OTP_TTL_MS);
 const hasOtpExpired = (expiresAt) => !expiresAt || new Date(expiresAt).getTime() <= Date.now();
 const isVerifiedUser = (user) => user?.isEmailVerified !== false;
 
-const sendRegistrationOtpEmail = (email, otp, name) =>
-  sendEmail(
-    email,
-    "Your registration OTP",
-    [`Hi ${name || "there"},`, "", `Your registration OTP is: ${otp}`, "It will expire in 10 minutes."].join("\n")
-  );
+const buildEmailShell = ({ eyebrow, title, bodyHtml, actionLabel = "", actionUrl = "", footerNote = "" }) => ({
+  text: [title, "", footerNote].filter(Boolean).join("\n"),
+  html: `
+    <div style="margin:0;padding:32px 16px;background:#f5f7fb;font-family:Arial,sans-serif;color:#16213e;">
+      <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e6ebf2;border-radius:24px;overflow:hidden;box-shadow:0 18px 40px rgba(22,33,62,0.08);">
+        <div style="padding:24px 28px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;">
+          <div style="font-size:12px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.85;">${eyebrow}</div>
+          <h1 style="margin:12px 0 0;font-size:30px;line-height:1.05;">${title}</h1>
+        </div>
+        <div style="padding:28px;line-height:1.7;font-size:16px;color:#42526b;">
+          ${bodyHtml}
+          ${actionUrl ? `<div style="margin-top:28px;"><a href="${actionUrl}" style="display:inline-block;padding:14px 22px;border-radius:14px;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:700;">${actionLabel}</a></div>` : ""}
+          ${footerNote ? `<p style="margin:28px 0 0;color:#6b7280;font-size:13px;">${footerNote}</p>` : ""}
+        </div>
+      </div>
+    </div>
+  `
+});
 
-const sendResetEmail = (email, resetLink, name) =>
-  sendEmail(
-    email,
-    "Reset your Roast & Boast AI password",
-    [
+const buildOtpEmail = ({ name, otp, label }) => {
+  const title = `${label} verification code`;
+  const bodyHtml = `
+    <p style="margin:0 0 14px;">Hi ${name || "there"},</p>
+    <p style="margin:0 0 18px;">Use the one-time code below to continue with <strong>${APP_NAME}</strong>.</p>
+    <div style="margin:0 0 18px;padding:18px 20px;border-radius:18px;background:#f8faff;border:1px solid #d9e2f2;text-align:center;">
+      <div style="font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:#6b7280;margin-bottom:8px;">One-time password</div>
+      <div style="font-size:34px;font-weight:800;letter-spacing:0.32em;color:#1f2a44;">${otp}</div>
+    </div>
+    <p style="margin:0;">This code expires in <strong>10 minutes</strong>.</p>
+  `;
+
+  return buildEmailShell({
+    eyebrow: APP_NAME,
+    title,
+    bodyHtml,
+    footerNote: "If you did not request this code, you can safely ignore this email."
+  });
+};
+
+const buildResetEmail = ({ name, resetLink }) => {
+  const bodyHtml = `
+    <p style="margin:0 0 14px;">Hi ${name || "there"},</p>
+    <p style="margin:0 0 14px;">We received a request to reset your password for <strong>${APP_NAME}</strong>.</p>
+    <p style="margin:0;">Use the secure button below to choose a new password.</p>
+  `;
+
+  return buildEmailShell({
+    eyebrow: APP_NAME,
+    title: "Reset your password",
+    bodyHtml,
+    actionLabel: "Open reset page",
+    actionUrl: resetLink,
+    footerNote: "This link will expire in 15 minutes for your security."
+  });
+};
+
+const sendRegistrationOtpEmail = async (email, otp, name) => {
+  const payload = buildOtpEmail({ name, otp, label: "Registration" });
+  await sendEmail({
+    to: email,
+    subject: `Your ${APP_NAME} registration OTP`,
+    text: payload.text,
+    html: payload.html
+  });
+};
+
+const sendResetEmail = async (email, resetLink, name) => {
+  const payload = buildResetEmail({ name, resetLink });
+  await sendEmail({
+    to: email,
+    subject: `Reset your ${APP_NAME} password`,
+    text: [
       `Hi ${name || "there"},`,
       "",
-      "Use the secure link below to reset your Roast & Boast AI password:",
+      `Open this link to reset your ${APP_NAME} password:`,
       resetLink,
       "",
       "This link expires in 15 minutes."
-    ].join("\n")
-  );
+    ].join("\n"),
+    html: payload.html
+  });
+};
 
 const withEmailDeliveryMessage = (error, fallbackMessage) => {
   const message = error?.message || "";
@@ -47,12 +110,14 @@ const withEmailDeliveryMessage = (error, fallbackMessage) => {
     message.includes("Invalid login") ||
     message.includes("Username and Password not accepted") ||
     message.includes("EAUTH") ||
-    message.includes("ETIMEDOUT")
+    message.includes("ETIMEDOUT") ||
+    message.includes("ECONNECTION") ||
+    message.includes("Greeting never received")
   ) {
     return `${fallbackMessage} Check Render email settings (EMAIL_USER, EMAIL_PASS/app password, EMAIL_FROM).`;
   }
 
-  return fallbackMessage;
+  return `${fallbackMessage} ${message}`.trim();
 };
 
 const serializeUser = (user) => ({
@@ -144,6 +209,7 @@ exports.login = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
+
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
