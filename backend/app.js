@@ -6,6 +6,7 @@ const session = require("express-session");
 const connectMongo = require("connect-mongo");
 
 const env = require("./config/env");
+const { isOriginAllowed } = require("./utils/cors");
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const publicRoutes = require("./routes/publicRoutes");
@@ -21,16 +22,26 @@ if (env.trustProxy) {
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || env.corsOrigins.length === 0 || env.corsOrigins.includes(origin)) {
+    if (isOriginAllowed(origin, env)) {
       return callback(null, true);
     }
 
+    console.warn(
+      "[CORS] Blocked origin:",
+      origin || "(none)",
+      "| Allowed:",
+      env.corsOrigins.join(", ") || "(none — set CORS_ORIGINS on Render)"
+    );
     return callback(new Error("CORS origin not allowed"));
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
 app.use(

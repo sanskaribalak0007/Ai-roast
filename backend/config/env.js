@@ -1,17 +1,38 @@
+/**
+ * Normalizes a URL to its origin (scheme + host + port), no trailing slash.
+ */
+const normalizeOrigin = (value = "") => {
+  const trimmed = String(value).trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return trimmed.replace(/\/$/, "");
+  }
+};
+
 const parseOrigins = (value = "") =>
   value
     .split(",")
-    .map((origin) => origin.trim())
+    .map((entry) => normalizeOrigin(entry))
     .filter(Boolean);
 
 const nodeEnv = process.env.NODE_ENV || "development";
 const isProduction = nodeEnv === "production";
 
-const corsOrigins = parseOrigins(
-  process.env.CORS_ORIGINS ||
-  process.env.CLIENT_URLS ||
-  process.env.FRONTEND_URL
-);
+const corsOrigins = [
+  ...new Set([
+    ...parseOrigins(process.env.CORS_ORIGINS),
+    ...parseOrigins(process.env.CLIENT_URLS),
+    normalizeOrigin(process.env.FRONTEND_URL)
+  ].filter(Boolean))
+];
+
+const allowNetlifyPreviews = process.env.ALLOW_NETLIFY_PREVIEWS === "true";
 
 module.exports = {
   nodeEnv,
@@ -21,8 +42,9 @@ module.exports = {
   sessionSecret: process.env.SESSION_SECRET,
   resetSecret: process.env.RESET_SECRET,
   geminiApiKey: process.env.GEMINI_API_KEY,
-  frontendUrl: process.env.FRONTEND_URL || corsOrigins[0],
+  frontendUrl: normalizeOrigin(process.env.FRONTEND_URL) || corsOrigins[0] || "",
   corsOrigins,
+  allowNetlifyPreviews,
   trustProxy: process.env.TRUST_PROXY === "true" || isProduction,
   sessionName: process.env.SESSION_NAME || "ai_roast.sid",
   sessionMaxAge: Number(process.env.SESSION_MAX_AGE_MS) || 1000 * 60 * 60 * 24,
@@ -38,5 +60,6 @@ module.exports = {
   cloudinaryFolder: process.env.CLOUDINARY_FOLDER || "ai-roast",
   razorpayKeyId: process.env.RAZORPAY_KEY_ID,
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
-  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
+  normalizeOrigin
 };
