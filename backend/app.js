@@ -40,8 +40,8 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
+// cors() handles OPTIONS preflight for all routes (do not use app.options("*") — breaks Express 5).
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
 app.use(
