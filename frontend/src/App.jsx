@@ -2,7 +2,6 @@ import { startTransition, useDeferredValue, useEffect, useRef, useState } from "
 import { api } from "./api";
 import {
   initialAuthForm,
-  initialForgotForm,
   initialResetForm,
   initialContactForm,
   testimonials
@@ -22,9 +21,7 @@ function App() {
   const [route, setRoute] = useState(readRoute);
   const [session, setSession] = useState({ checked: false, user: null });
   const [authMode, setAuthMode] = useState("login");
-  const [authStep, setAuthStep] = useState("");
   const [authForm, setAuthForm] = useState(initialAuthForm);
-  const [forgotForm, setForgotForm] = useState(initialForgotForm);
   const [resetForm, setResetForm] = useState(initialResetForm);
   const [contactForm, setContactForm] = useState(initialContactForm);
   const [authNotice, setAuthNotice] = useState("");
@@ -33,7 +30,6 @@ function App() {
   const [contactError, setContactError] = useState("");
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [loadingContact, setLoadingContact] = useState(false);
-  const [otpCountdown, setOtpCountdown] = useState(0);
 
   const [history, setHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState("");
@@ -110,18 +106,6 @@ function App() {
 
     loadSharedChat();
   }, [route]);
-
-  useEffect(() => {
-    if (otpCountdown <= 0) {
-      return undefined;
-    }
-
-    const timer = window.setTimeout(() => {
-      setOtpCountdown((current) => Math.max(current - 1, 0));
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [otpCountdown]);
 
   useEffect(() => {
     if (!session.user) {
@@ -252,40 +236,9 @@ function App() {
 
   const handleSwitchAuthMode = (mode) => {
     setAuthMode(mode);
-    setAuthStep("");
-    setOtpCountdown(0);
     setAuthError("");
     setAuthNotice("");
-    setAuthForm((current) => ({ ...current, otp: "" }));
-  };
-
-  const handleResendRegisterOtp = async () => {
-    setLoadingAuth(true);
-    setAuthError("");
-    setAuthNotice("");
-
-    try {
-      const response = await api.register({
-        name: authForm.name,
-        email: authForm.email,
-        password: authForm.password
-      });
-
-      if (response.otpRequired) {
-        setAuthStep("register-otp");
-        setOtpCountdown(60);
-        setAuthNotice(response.message);
-      }
-    } catch (error) {
-      setAuthError(error.message);
-    } finally {
-      setLoadingAuth(false);
-    }
-  };
-
-  const handleForgotChange = (event) => {
-    const { name, value } = event.target;
-    setForgotForm((current) => ({ ...current, [name]: value }));
+    setAuthForm(initialAuthForm);
   };
 
   const handleResetChange = (event) => {
@@ -309,24 +262,15 @@ function App() {
         const response = await api.register({
           name: authForm.name,
           email: authForm.email,
-          password: authForm.password,
-          otp: authForm.otp
+          password: authForm.password
         });
 
-        if (response.otpRequired) {
-          setAuthStep("register-otp");
-          setOtpCountdown(60);
-          setAuthNotice(response.message);
-        } else {
-          setAuthNotice(response.message);
-          setAuthMode("login");
-          setAuthStep("");
-          setOtpCountdown(0);
-          setAuthForm({
-            ...initialAuthForm,
-            email: authForm.email
-          });
-        }
+        setAuthNotice(response.message);
+        setAuthMode("login");
+        setAuthForm({
+          ...initialAuthForm,
+          email: authForm.email
+        });
       } else {
         const response = await api.login({
           email: authForm.email,
@@ -335,25 +279,7 @@ function App() {
 
         setSession({ checked: true, user: response.user });
         setStatusLine("Session secured. Let the roasting begin.");
-        setAuthStep("");
-        setOtpCountdown(0);
       }
-    } catch (error) {
-      setAuthError(error.message);
-    } finally {
-      setLoadingAuth(false);
-    }
-  };
-
-  const handleForgotPassword = async (event) => {
-    event.preventDefault();
-    setLoadingAuth(true);
-    setAuthError("");
-    setAuthNotice("");
-
-    try {
-      const response = await api.forgotPassword(forgotForm);
-      setAuthNotice(response.message);
     } catch (error) {
       setAuthError(error.message);
     } finally {
@@ -645,17 +571,11 @@ function App() {
         authError={authError}
         authForm={authForm}
         authMode={authMode}
-        otpCountdown={otpCountdown}
-        authStep={authStep}
         authNotice={authNotice}
         footer={footer}
-        forgotForm={forgotForm}
         loadingAuth={loadingAuth}
         onAuthChange={handleAuthChange}
-        onForgotChange={handleForgotChange}
-        onForgotPassword={handleForgotPassword}
         onRegisterOrLogin={handleRegisterOrLogin}
-        onResendRegisterOtp={handleResendRegisterOtp}
         onSwitchAuthMode={handleSwitchAuthMode}
         publicNav={publicNav}
       />

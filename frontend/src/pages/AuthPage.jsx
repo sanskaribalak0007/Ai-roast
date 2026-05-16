@@ -2,23 +2,15 @@ function AuthPage({
   footer,
   publicNav,
   authMode,
-  authStep,
-  otpCountdown,
   onSwitchAuthMode,
-  onResendRegisterOtp,
   authForm,
-  forgotForm,
   onAuthChange,
-  onForgotChange,
   onRegisterOrLogin,
-  onForgotPassword,
   loadingAuth,
   authNotice,
   authError
 }) {
   const isRegister = authMode === "register";
-  const isForgot = authMode === "forgot";
-  const waitingForRegisterOtp = authStep === "register-otp";
 
   return (
     <div className="marketing-shell">
@@ -60,81 +52,22 @@ function AuthPage({
             <button className={authMode === "register" ? "active" : ""} onClick={() => onSwitchAuthMode("register")} type="button">
               Register
             </button>
-            <button className={authMode === "forgot" ? "active" : ""} onClick={() => onSwitchAuthMode("forgot")} type="button">
-              Forgot
-            </button>
           </div>
 
-          {!isForgot ? (
-            <form className="auth-form" onSubmit={onRegisterOrLogin}>
-              <h2>
-                {isRegister
-                  ? waitingForRegisterOtp
-                    ? "Verify your email"
-                    : "Create your account"
-                  : "Welcome back"}
-              </h2>
+          <form className="auth-form" onSubmit={onRegisterOrLogin}>
+            <h2>{isRegister ? "Create your account" : "Welcome back"}</h2>
 
-              {isRegister ? (
-                <input name="name" onChange={onAuthChange} placeholder="Your name" value={authForm.name} />
-              ) : null}
+            {isRegister ? (
+              <input name="name" onChange={onAuthChange} placeholder="Your name" value={authForm.name} />
+            ) : null}
 
-              <input name="email" onChange={onAuthChange} placeholder="Email" type="email" value={authForm.email} />
-              <input name="password" onChange={onAuthChange} placeholder="Password" type="password" value={authForm.password} />
+            <input name="email" onChange={onAuthChange} placeholder="Email" type="email" value={authForm.email} />
+            <input name="password" onChange={onAuthChange} placeholder="Password" type="password" value={authForm.password} />
 
-              {waitingForRegisterOtp ? (
-                <>
-                  <div className="otp-email-banner">
-                    <div>
-                      <small>OTP sent to</small>
-                      <strong>{authForm.email}</strong>
-                    </div>
-                    <span>{otpCountdown}s</span>
-                  </div>
-                  <input
-                    inputMode="numeric"
-                    maxLength={6}
-                    name="otp"
-                    onChange={onAuthChange}
-                    placeholder="Enter 6-digit OTP"
-                    value={authForm.otp}
-                  />
-                  <button
-                    className="text-button otp-resend-button"
-                    disabled={loadingAuth || otpCountdown > 0}
-                    onClick={onResendRegisterOtp}
-                    type="button"
-                  >
-                    {otpCountdown > 0 ? `Resend available in ${otpCountdown}s` : "Resend OTP"}
-                  </button>
-                </>
-              ) : null}
-
-              <button className="primary-button" disabled={loadingAuth} type="submit">
-                {loadingAuth
-                  ? "Processing..."
-                  : isRegister
-                    ? waitingForRegisterOtp
-                      ? "Verify OTP"
-                      : "Send OTP"
-                    : "Login"}
-              </button>
-            </form>
-          ) : (
-            <form className="auth-form" onSubmit={onForgotPassword}>
-              <h2>Recover your account</h2>
-              <input
-                name="email"
-                onChange={onForgotChange}
-                placeholder="Registered email"
-                type="email"
-                value={forgotForm.email}
-              />
-              <button className="primary-button" disabled={loadingAuth} type="submit">
-                {loadingAuth ? "Sending..." : "Send reset link"}
-              </button>
-            </form>
-          )}
+            <button className="primary-button" disabled={loadingAuth} type="submit">
+              {loadingAuth ? "Processing..." : isRegister ? "Create account" : "Login"}
+            </button>
+          </form>
 
           {authNotice ? <p className="notice success">{authNotice}</p> : null}
           {authError ? <p className="notice error">{authError}</p> : null}
