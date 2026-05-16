@@ -21,8 +21,40 @@ const parseOrigins = (value = "") =>
     .map((entry) => normalizeOrigin(entry))
     .filter(Boolean);
 
+const formatEmailFrom = (rawFrom, fallbackUser) => {
+  const trimmed = String(rawFrom || "").trim();
+
+  if (trimmed) {
+    return trimmed;
+  }
+
+  if (!fallbackUser) {
+    return "";
+  }
+
+  return `Roast & Boast AI <${fallbackUser}>`;
+};
+
 const nodeEnv = process.env.NODE_ENV || "development";
 const isProduction = nodeEnv === "production";
+
+const parseSameSite = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+
+  if (!normalized) {
+    return isProduction ? "none" : "lax";
+  }
+
+  if (normalized === "false" || normalized === "none") {
+    return "none";
+  }
+
+  if (normalized === "strict") {
+    return "strict";
+  }
+
+  return "lax";
+};
 
 const corsOrigins = [
   ...new Set([
@@ -52,14 +84,14 @@ module.exports = {
   sessionName: process.env.SESSION_NAME || "ai_roast.sid",
   sessionMaxAge: Number(process.env.SESSION_MAX_AGE_MS) || 1000 * 60 * 60 * 24,
   cookieSecure: process.env.COOKIE_SECURE === "true" || isProduction,
-  cookieSameSite: process.env.COOKIE_SAME_SITE || (isProduction ? "none" : "lax"),
+  cookieSameSite: parseSameSite(process.env.COOKIE_SAME_SITE),
   emailService: process.env.EMAIL_SERVICE || "gmail",
   emailHost: process.env.EMAIL_HOST,
   emailPort: Number(process.env.EMAIL_PORT) || 587,
   emailSecure: process.env.EMAIL_SECURE === "true",
   emailUser: process.env.EMAIL_USER,
   emailPass: process.env.EMAIL_PASS,
-  emailFrom: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+  emailFrom: formatEmailFrom(process.env.EMAIL_FROM, process.env.EMAIL_USER),
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,

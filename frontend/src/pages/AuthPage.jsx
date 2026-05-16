@@ -17,7 +17,6 @@ function AuthPage({
   const isRegister = authMode === "register";
   const isForgot = authMode === "forgot";
   const waitingForRegisterOtp = authStep === "register-otp";
-  const waitingForLoginOtp = authStep === "login-otp";
 
   return (
     <div className="marketing-shell">
@@ -71,9 +70,7 @@ function AuthPage({
                   ? waitingForRegisterOtp
                     ? "Verify your email"
                     : "Create your account"
-                  : waitingForLoginOtp
-                    ? "Enter login OTP"
-                    : "Welcome back"}
+                  : "Welcome back"}
               </h2>
 
               {isRegister ? (
@@ -83,7 +80,7 @@ function AuthPage({
               <input name="email" onChange={onAuthChange} placeholder="Email" type="email" value={authForm.email} />
               <input name="password" onChange={onAuthChange} placeholder="Password" type="password" value={authForm.password} />
 
-              {waitingForRegisterOtp || waitingForLoginOtp ? (
+              {waitingForRegisterOtp ? (
                 <input
                   inputMode="numeric"
                   maxLength={6}
@@ -101,9 +98,7 @@ function AuthPage({
                     ? waitingForRegisterOtp
                       ? "Verify OTP"
                       : "Send OTP"
-                    : waitingForLoginOtp
-                      ? "Verify and login"
-                      : "Send login OTP"}
+                    : "Login"}
               </button>
             </form>
           ) : (

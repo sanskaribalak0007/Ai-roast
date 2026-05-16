@@ -24,26 +24,36 @@ const sendRegistrationOtpEmail = (email, otp, name) =>
     [`Hi ${name || "there"},`, "", `Your registration OTP is: ${otp}`, "It will expire in 10 minutes."].join("\n")
   );
 
-const sendLoginOtpEmail = (email, otp, name) =>
-  sendEmail(
-    email,
-    "Your login OTP",
-    [`Hi ${name || "there"},`, "", `Your login OTP is: ${otp}`, "It will expire in 10 minutes."].join("\n")
-  );
-
 const sendResetEmail = (email, resetLink, name) =>
   sendEmail(
     email,
-    "Password Reset",
+    "Reset your Roast & Boast AI password",
     [
       `Hi ${name || "there"},`,
       "",
-      "Use the link below to reset your password:",
+      "Use the secure link below to reset your Roast & Boast AI password:",
       resetLink,
       "",
       "This link expires in 15 minutes."
     ].join("\n")
   );
+
+const withEmailDeliveryMessage = (error, fallbackMessage) => {
+  const message = error?.message || "";
+
+  if (
+    message.includes("Email configuration is missing") ||
+    message.includes("Missing credentials") ||
+    message.includes("Invalid login") ||
+    message.includes("Username and Password not accepted") ||
+    message.includes("EAUTH") ||
+    message.includes("ETIMEDOUT")
+  ) {
+    return `${fallbackMessage} Check Render email settings (EMAIL_USER, EMAIL_PASS/app password, EMAIL_FROM).`;
+  }
+
+  return fallbackMessage;
+};
 
 const serializeUser = (user) => ({
   id: String(user._id),
@@ -88,7 +98,13 @@ exports.register = async (req, res) => {
       user.registerOtpExpiresAt = otpExpiresAt;
       await user.save();
 
-      await sendRegistrationOtpEmail(email, generatedOtp, name);
+      try {
+        await sendRegistrationOtpEmail(email, generatedOtp, name);
+      } catch (emailError) {
+        return res.status(500).json({
+          message: withEmailDeliveryMessage(emailError, "Unable to send registration OTP email.")
+        });
+      }
 
       return res.json({
         otpRequired: true,
@@ -118,7 +134,7 @@ exports.register = async (req, res) => {
     existingUser.registerOtpExpiresAt = null;
     await existingUser.save();
 
-    return res.json({ message: "Registration completed successfully. Please login with OTP." });
+    return res.json({ message: "Registration completed successfully. Please login with your email and password." });
   } catch (error) {
     return res.status(500).json({ message: error.message || "Registration failed" });
   }
@@ -128,8 +144,6 @@ exports.login = async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
-    const otp = String(req.body?.otp || "").trim();
-
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
@@ -148,29 +162,6 @@ exports.login = async (req, res) => {
 
     if (!match) {
       return res.status(400).json({ message: "Invalid password" });
-    }
-
-    if (!otp) {
-      const generatedOtp = createOtpCode();
-      user.loginOtpHash = hashOtp(generatedOtp);
-      user.loginOtpExpiresAt = buildOtpExpiry();
-      await user.save();
-
-      await sendLoginOtpEmail(user.email, generatedOtp, user.name);
-
-      return res.json({
-        otpRequired: true,
-        stage: "login",
-        message: "Login OTP sent to your email"
-      });
-    }
-
-    if (hasOtpExpired(user.loginOtpExpiresAt)) {
-      return res.status(400).json({ message: "Login OTP expired. Request a new OTP." });
-    }
-
-    if (user.loginOtpHash !== hashOtp(otp)) {
-      return res.status(400).json({ message: "Invalid login OTP" });
     }
 
     user.loginOtpHash = "";
@@ -216,7 +207,13 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     const resetLink = `${env.frontendUrl.replace(/\/$/, "")}/reset/${resetToken}`;
-    await sendResetEmail(email, resetLink, user.name);
+    try {
+      await sendResetEmail(email, resetLink, user.name);
+    } catch (emailError) {
+      return res.status(500).json({
+        message: withEmailDeliveryMessage(emailError, "Unable to send reset link email.")
+      });
+    }
 
     return res.json({ message: "Reset link sent to email" });
   } catch (error) {

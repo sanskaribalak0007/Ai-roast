@@ -290,18 +290,12 @@ function App() {
       } else {
         const response = await api.login({
           email: authForm.email,
-          password: authForm.password,
-          otp: authForm.otp
+          password: authForm.password
         });
 
-        if (response.otpRequired) {
-          setAuthStep("login-otp");
-          setAuthNotice(response.message);
-        } else {
-          setSession({ checked: true, user: response.user });
-          setStatusLine("Session secured. Let the roasting begin.");
-          setAuthStep("");
-        }
+        setSession({ checked: true, user: response.user });
+        setStatusLine("Session secured. Let the roasting begin.");
+        setAuthStep("");
       }
     } catch (error) {
       setAuthError(error.message);

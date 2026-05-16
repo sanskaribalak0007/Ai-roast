@@ -27,8 +27,8 @@ const createSessionMiddleware = () => {
     }),
     cookie: {
       httpOnly: true,
-      secure: env.cookieSecure,
-      sameSite: env.cookieSameSite,
+      secure: env.isProduction ? true : env.cookieSecure,
+      sameSite: env.isProduction ? "none" : env.cookieSameSite,
       maxAge: env.sessionMaxAge
     }
   });
