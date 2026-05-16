@@ -62,11 +62,15 @@ const sendEmail = async (input, subject, text, html) => {
 
   const transporter = nodemailer.createTransport({
     ...buildTransportConfig(),
+    family: 4,
     pool: true,
     maxConnections: 1,
     connectionTimeout: 20000,
     greetingTimeout: 20000,
-    socketTimeout: 30000
+    socketTimeout: 30000,
+    tls: {
+      servername: env.emailHost || "smtp.gmail.com"
+    }
   });
 
   await transporter.sendMail({
