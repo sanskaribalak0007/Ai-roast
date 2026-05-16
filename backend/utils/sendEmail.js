@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
 const env = require("../config/env");
 
 const normalizePayload = (input, subject, text, html) => {
@@ -62,7 +63,9 @@ const sendEmail = async (input, subject, text, html) => {
 
   const transporter = nodemailer.createTransport({
     ...buildTransportConfig(),
-    family: 4,
+    lookup(hostname, options, callback) {
+      return dns.lookup(hostname, { family: 4, all: false }, callback);
+    },
     pool: true,
     maxConnections: 1,
     connectionTimeout: 20000,
