@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const sendEmailSafe = require("../utils/sendEmailSafe");
+const { persistUserSession } = require("../utils/sessionHelpers");
 const env = require("../config/env");
 const { buildAccessState, ensureWeeklyCredits } = require("../services/usageService");
 
@@ -44,12 +45,9 @@ exports.register = async (req,res)=>{
 
     return res.json({ message: "User Registered Successfully" });
 
-  }catch(error){
-
-    res.status(500).json({error:error.message});
-
+  } catch (error) {
+    return res.status(500).json({ message: error.message || "Registration failed" });
   }
-
 };
 
 
@@ -77,27 +75,25 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    /* SESSION CREATE */
+    await persistUserSession(req, user);
 
-    req.session.user = {
-      id: user._id,
-      email: user.email
-    };
+    ensureWeeklyCredits(user).catch((creditsError) => {
+      console.warn("[login] ensureWeeklyCredits:", creditsError.message);
+    });
 
-    await ensureWeeklyCredits(user);
-
-    res.json({
+    return res.json({
       message: "Login successful",
       user: {
-        ...req.session.user,
+        id: String(user._id),
+        email: user.email,
         access: buildAccessState(user)
       }
     });
-
   } catch (error) {
-
-    res.status(500).json({ error: error.message });
-
+    console.error("[login] failed:", error.message);
+    return res.status(500).json({
+      message: error.message || "Login failed. Please try again."
+    });
   }
 
 };
@@ -192,13 +188,14 @@ exports.resetPassword = async (req,res)=>{
 
 // LOGOUT
 exports.logout = (req, res) => {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.status(500).json({ message: "Logout failed" });
+    }
 
-  req.session.destroy(() => {
-    res.json({
-      message: "Logout successful"
-    });
+    res.clearCookie(env.sessionName || "ai_roast.sid");
+    return res.json({ message: "Logout successful" });
   });
-
 };
 
 

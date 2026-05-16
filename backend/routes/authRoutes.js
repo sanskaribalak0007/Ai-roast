@@ -26,8 +26,8 @@ router.post("/login", login);
 router.get("/logout", authMiddleware, logout);
 
 
-// CHECK SESSION (protected)
-router.get("/check", authMiddleware, checkAuth);
+// CHECK SESSION (public — returns loggedIn true/false)
+router.get("/check", checkAuth);
 
 
 // FORGOT PASSWORD
