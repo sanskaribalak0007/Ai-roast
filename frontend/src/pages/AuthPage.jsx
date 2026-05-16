@@ -1,4 +1,24 @@
-function AuthPage({ footer, publicNav, authMode, setAuthMode, authForm, forgotForm, onAuthChange, onForgotChange, onRegisterOrLogin, onForgotPassword, loadingAuth, authNotice, authError }) {
+function AuthPage({
+  footer,
+  publicNav,
+  authMode,
+  authStep,
+  onSwitchAuthMode,
+  authForm,
+  forgotForm,
+  onAuthChange,
+  onForgotChange,
+  onRegisterOrLogin,
+  onForgotPassword,
+  loadingAuth,
+  authNotice,
+  authError
+}) {
+  const isRegister = authMode === "register";
+  const isForgot = authMode === "forgot";
+  const waitingForRegisterOtp = authStep === "register-otp";
+  const waitingForLoginOtp = authStep === "login-otp";
+
   return (
     <div className="marketing-shell">
       {publicNav}
@@ -33,27 +53,57 @@ function AuthPage({ footer, publicNav, authMode, setAuthMode, authForm, forgotFo
 
         <section className="auth-panel">
           <div className="auth-tabs">
-            <button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")} type="button">
+            <button className={authMode === "login" ? "active" : ""} onClick={() => onSwitchAuthMode("login")} type="button">
               Login
             </button>
-            <button className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")} type="button">
+            <button className={authMode === "register" ? "active" : ""} onClick={() => onSwitchAuthMode("register")} type="button">
               Register
             </button>
-            <button className={authMode === "forgot" ? "active" : ""} onClick={() => setAuthMode("forgot")} type="button">
+            <button className={authMode === "forgot" ? "active" : ""} onClick={() => onSwitchAuthMode("forgot")} type="button">
               Forgot
             </button>
           </div>
 
-          {authMode !== "forgot" ? (
+          {!isForgot ? (
             <form className="auth-form" onSubmit={onRegisterOrLogin}>
-              <h2>{authMode === "register" ? "Create your account" : "Welcome back"}</h2>
-              {authMode === "register" ? (
+              <h2>
+                {isRegister
+                  ? waitingForRegisterOtp
+                    ? "Verify your email"
+                    : "Create your account"
+                  : waitingForLoginOtp
+                    ? "Enter login OTP"
+                    : "Welcome back"}
+              </h2>
+
+              {isRegister ? (
                 <input name="name" onChange={onAuthChange} placeholder="Your name" value={authForm.name} />
               ) : null}
+
               <input name="email" onChange={onAuthChange} placeholder="Email" type="email" value={authForm.email} />
               <input name="password" onChange={onAuthChange} placeholder="Password" type="password" value={authForm.password} />
+
+              {waitingForRegisterOtp || waitingForLoginOtp ? (
+                <input
+                  inputMode="numeric"
+                  maxLength={6}
+                  name="otp"
+                  onChange={onAuthChange}
+                  placeholder="Enter 6-digit OTP"
+                  value={authForm.otp}
+                />
+              ) : null}
+
               <button className="primary-button" disabled={loadingAuth} type="submit">
-                {loadingAuth ? "Processing..." : authMode === "register" ? "Create account" : "Login"}
+                {loadingAuth
+                  ? "Processing..."
+                  : isRegister
+                    ? waitingForRegisterOtp
+                      ? "Verify OTP"
+                      : "Send OTP"
+                    : waitingForLoginOtp
+                      ? "Verify and login"
+                      : "Send login OTP"}
               </button>
             </form>
           ) : (

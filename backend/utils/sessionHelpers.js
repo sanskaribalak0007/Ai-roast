@@ -11,7 +11,8 @@ const persistUserSession = (req, user) =>
 
       req.session.user = {
         id: String(user._id),
-        email: user.email
+        email: user.email,
+        name: user.name
       };
 
       req.session.save((saveError) => {

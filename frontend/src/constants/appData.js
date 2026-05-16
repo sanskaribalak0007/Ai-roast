@@ -1,7 +1,8 @@
 export const initialAuthForm = {
   name: "",
   email: "",
-  password: ""
+  password: "",
+  otp: ""
 };
 
 export const initialForgotForm = {

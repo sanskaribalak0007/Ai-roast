@@ -25,6 +25,31 @@ const userSchema = new mongoose.Schema({
     type:String
   },
 
+  isEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+
+  registerOtpHash: {
+    type: String,
+    default: ""
+  },
+
+  registerOtpExpiresAt: {
+    type: Date,
+    default: null
+  },
+
+  loginOtpHash: {
+    type: String,
+    default: ""
+  },
+
+  loginOtpExpiresAt: {
+    type: Date,
+    default: null
+  },
+
   subscribed: {
     type: Number,
     default: 0

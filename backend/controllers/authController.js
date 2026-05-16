@@ -1,22 +1,63 @@
-const User = require("../models/User");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const sendEmailSafe = require("../utils/sendEmailSafe");
+
+const User = require("../models/User");
+const sendEmail = require("../utils/sendEmail");
 const { persistUserSession } = require("../utils/sessionHelpers");
 const env = require("../config/env");
 const { buildAccessState, ensureWeeklyCredits } = require("../services/usageService");
 
+const OTP_TTL_MS = 1000 * 60 * 10;
+
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
+const createOtpCode = () => String(crypto.randomInt(100000, 1000000));
+const hashOtp = (otp) => crypto.createHash("sha256").update(String(otp)).digest("hex");
+const buildOtpExpiry = () => new Date(Date.now() + OTP_TTL_MS);
+const hasOtpExpired = (expiresAt) => !expiresAt || new Date(expiresAt).getTime() <= Date.now();
+const isVerifiedUser = (user) => user?.isEmailVerified !== false;
 
+const sendRegistrationOtpEmail = (email, otp, name) =>
+  sendEmail(
+    email,
+    "Your registration OTP",
+    [`Hi ${name || "there"},`, "", `Your registration OTP is: ${otp}`, "It will expire in 10 minutes."].join("\n")
+  );
 
-// REGISTER
-exports.register = async (req,res)=>{
+const sendLoginOtpEmail = (email, otp, name) =>
+  sendEmail(
+    email,
+    "Your login OTP",
+    [`Hi ${name || "there"},`, "", `Your login OTP is: ${otp}`, "It will expire in 10 minutes."].join("\n")
+  );
 
-  try{
+const sendResetEmail = (email, resetLink, name) =>
+  sendEmail(
+    email,
+    "Password Reset",
+    [
+      `Hi ${name || "there"},`,
+      "",
+      "Use the link below to reset your password:",
+      resetLink,
+      "",
+      "This link expires in 15 minutes."
+    ].join("\n")
+  );
 
+const serializeUser = (user) => ({
+  id: String(user._id),
+  name: user.name,
+  email: user.email,
+  access: buildAccessState(user)
+});
+
+exports.register = async (req, res) => {
+  try {
     const name = req.body?.name?.trim();
     const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
+    const otp = String(req.body?.otp || "").trim();
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email and password are required" });
@@ -26,38 +67,68 @@ exports.register = async (req,res)=>{
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const userExist = await User.findOne({email});
+    const existingUser = await User.findOne({ email });
 
-    if(userExist){
-      return res.status(400).json({message:"User already exists"});
+    if (!otp) {
+      if (existingUser && isVerifiedUser(existingUser)) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const generatedOtp = createOtpCode();
+      const otpHash = hashOtp(generatedOtp);
+      const otpExpiresAt = buildOtpExpiry();
+
+      const user = existingUser || new User({ email });
+      user.name = name;
+      user.email = email;
+      user.password = hashedPassword;
+      user.isEmailVerified = false;
+      user.registerOtpHash = otpHash;
+      user.registerOtpExpiresAt = otpExpiresAt;
+      await user.save();
+
+      await sendRegistrationOtpEmail(email, generatedOtp, name);
+
+      return res.json({
+        otpRequired: true,
+        stage: "register",
+        message: "Registration OTP sent to your email"
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password,10);
+    if (!existingUser) {
+      return res.status(400).json({ message: "Please request a registration OTP first" });
+    }
 
-    const user = await User.create({
-      name,
-      email,
-      password:hashedPassword
-    });
+    if (isVerifiedUser(existingUser)) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
-    // Do not block registration on SMTP (avoids infinite "Processing..." on deploy).
-    sendEmailSafe(email, "Registration Successful", "Thanks for registering on our platform");
+    if (hasOtpExpired(existingUser.registerOtpExpiresAt)) {
+      return res.status(400).json({ message: "Registration OTP expired. Request a new OTP." });
+    }
 
-    return res.json({ message: "User Registered Successfully" });
+    if (existingUser.registerOtpHash !== hashOtp(otp)) {
+      return res.status(400).json({ message: "Invalid registration OTP" });
+    }
 
+    existingUser.isEmailVerified = true;
+    existingUser.registerOtpHash = "";
+    existingUser.registerOtpExpiresAt = null;
+    await existingUser.save();
+
+    return res.json({ message: "Registration completed successfully. Please login with OTP." });
   } catch (error) {
     return res.status(500).json({ message: error.message || "Registration failed" });
   }
 };
 
-
-// LOGIN
 exports.login = async (req, res) => {
-
   try {
-
     const email = normalizeEmail(req.body?.email);
     const password = req.body?.password;
+    const otp = String(req.body?.otp || "").trim();
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
@@ -69,25 +140,49 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
+    if (!isVerifiedUser(user)) {
+      return res.status(400).json({ message: "Please verify your email first through registration OTP" });
+    }
+
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
       return res.status(400).json({ message: "Invalid password" });
     }
 
-    await persistUserSession(req, user);
+    if (!otp) {
+      const generatedOtp = createOtpCode();
+      user.loginOtpHash = hashOtp(generatedOtp);
+      user.loginOtpExpiresAt = buildOtpExpiry();
+      await user.save();
 
-    ensureWeeklyCredits(user).catch((creditsError) => {
-      console.warn("[login] ensureWeeklyCredits:", creditsError.message);
-    });
+      await sendLoginOtpEmail(user.email, generatedOtp, user.name);
+
+      return res.json({
+        otpRequired: true,
+        stage: "login",
+        message: "Login OTP sent to your email"
+      });
+    }
+
+    if (hasOtpExpired(user.loginOtpExpiresAt)) {
+      return res.status(400).json({ message: "Login OTP expired. Request a new OTP." });
+    }
+
+    if (user.loginOtpHash !== hashOtp(otp)) {
+      return res.status(400).json({ message: "Invalid login OTP" });
+    }
+
+    user.loginOtpHash = "";
+    user.loginOtpExpiresAt = null;
+    await user.save();
+
+    await persistUserSession(req, user);
+    await ensureWeeklyCredits(user);
 
     return res.json({
       message: "Login successful",
-      user: {
-        id: String(user._id),
-        email: user.email,
-        access: buildAccessState(user)
-      }
+      user: serializeUser(user)
     });
   } catch (error) {
     console.error("[login] failed:", error.message);
@@ -95,58 +190,43 @@ exports.login = async (req, res) => {
       message: error.message || "Login failed. Please try again."
     });
   }
-
 };
 
-
-// FORGOT PASSWORD
-exports.forgotPassword = async (req,res)=>{
-
-  try{
-
+exports.forgotPassword = async (req, res) => {
+  try {
     const email = normalizeEmail(req.body?.email);
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    const user = await User.findOne({email});
+    const user = await User.findOne({ email });
 
-    if(!user){
-      return res.json({message:"User not found"});
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
     }
 
-    const resetToken = jwt.sign(
-      {id:user._id},
-      env.resetSecret,
-      {expiresIn:"15m"}
-    );
+    if (!isVerifiedUser(user)) {
+      return res.status(400).json({ message: "Verify your email first before resetting the password" });
+    }
+
+    const resetToken = jwt.sign({ id: user._id }, env.resetSecret, { expiresIn: "15m" });
 
     user.resetToken = resetToken;
-
     await user.save();
 
     const resetLink = `${env.frontendUrl.replace(/\/$/, "")}/reset/${resetToken}`;
-
-    sendEmailSafe(email, "Password Reset", `Reset your password here: ${resetLink}`);
+    await sendResetEmail(email, resetLink, user.name);
 
     return res.json({ message: "Reset link sent to email" });
-
-  }catch(error){
-
-    res.status(500).json({error:error.message});
-
+  } catch (error) {
+    return res.status(500).json({ message: error.message || "Unable to send reset link" });
   }
-
 };
 
-
-// RESET PASSWORD
-exports.resetPassword = async (req,res)=>{
-
-  try{
-
-    const {token} = req.params;
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
     const password = req.body?.password;
 
     if (!token || !password) {
@@ -157,36 +237,25 @@ exports.resetPassword = async (req,res)=>{
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
-    const decoded = jwt.verify(
-      token,
-      env.resetSecret
-    );
-
+    const decoded = jwt.verify(token, env.resetSecret);
     const user = await User.findById(decoded.id);
 
     if (!user || user.resetToken !== token) {
       return res.status(400).json({ message: "Invalid or expired reset token" });
     }
 
-    const hashedPassword = await bcrypt.hash(password,10);
-
-    user.password = hashedPassword;
-
+    user.password = await bcrypt.hash(password, 10);
     user.resetToken = "";
-
+    user.loginOtpHash = "";
+    user.loginOtpExpiresAt = null;
     await user.save();
 
-    res.json({message:"Password reset successful"});
-
-  }catch(error){
-
-    res.status(500).json({error:error.message});
-
+    return res.json({ message: "Password reset successful" });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || "Password reset failed" });
   }
-
 };
 
-// LOGOUT
 exports.logout = (req, res) => {
   req.session.destroy((error) => {
     if (error) {
@@ -198,13 +267,9 @@ exports.logout = (req, res) => {
   });
 };
 
-
-// CHECK SESSION
 exports.checkAuth = (req, res) => {
   if (!req.session.user) {
-    return res.json({
-      loggedIn: false
-    });
+    return res.json({ loggedIn: false });
   }
 
   User.findById(req.session.user.id)
@@ -217,10 +282,7 @@ exports.checkAuth = (req, res) => {
 
       return res.json({
         loggedIn: true,
-        user: {
-          ...req.session.user,
-          access: buildAccessState(user)
-        }
+        user: serializeUser(user)
       });
     })
     .catch(() => {

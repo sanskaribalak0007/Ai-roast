@@ -1,8 +1,24 @@
 import { formatConversationDate } from "../../utils/formatters";
 
+const getPlanLabel = (sessionUser) => {
+  const planKey = sessionUser?.access?.subscription?.planKey || "";
+
+  if (planKey === "pro_weekly") {
+    return "Weekly";
+  }
+
+  if (planKey === "pro_monthly") {
+    return "Monthly";
+  }
+
+  if (planKey === "pro_yearly") {
+    return "Yearly";
+  }
+
+  return "Free";
+};
+
 function Sidebar({
-  routeType,
-  onNavigateTool,
   history,
   activeChatId,
   historySearch,
@@ -16,9 +32,12 @@ function Sidebar({
   onDeleteChat,
   onOpenChat,
   sessionUser,
-  statusLine,
   onLogout
 }) {
+  const userName = sessionUser?.name?.trim() || "Member";
+  const planLabel = getPlanLabel(sessionUser);
+  const initial = userName.charAt(0).toUpperCase() || "M";
+
   return (
     <aside className="sidebar">
       <header className="sidebar-header">
@@ -30,34 +49,6 @@ function Sidebar({
           New chat
         </button>
       </header>
-
-      <nav className="sidebar-tools" aria-label="Workspace tools">
-        <div className="section-head compact">
-          <p className="eyebrow">Tools</p>
-          <h3>Protected utilities</h3>
-        </div>
-        <div className="tool-link-list">
-          <button className={`tool-link ${routeType === "auth" ? "active" : ""}`} onClick={() => onNavigateTool("auth")} type="button">
-            AI Chat
-          </button>
-          <button className={`tool-link ${routeType === "billing" ? "active" : ""}`} onClick={() => onNavigateTool("billing")} type="button">
-            Billing
-          </button>
-          <button className={`tool-link ${routeType === "scraper" ? "active" : ""}`} onClick={() => onNavigateTool("scraper")} type="button">
-            Scraper
-          </button>
-          <button className={`tool-link ${routeType === "audit" ? "active" : ""}`} onClick={() => onNavigateTool("audit")} type="button">
-            Page Audit
-          </button>
-          <button
-            className={`tool-link ${routeType === "playground" ? "active" : ""}`}
-            onClick={() => onNavigateTool("playground")}
-            type="button"
-          >
-            Code Studio
-          </button>
-        </div>
-      </nav>
 
       <section className="sidebar-history" aria-label="Chat history">
         <div className="section-head compact">
@@ -102,16 +93,19 @@ function Sidebar({
               </div>
             </article>
           ))}
-          {!history.length ? (
-            <p className="empty-copy">No saved conversations yet. Start from a template or ask your own question.</p>
-          ) : null}
+          {!history.length ? <p className="empty-copy">No saved conversations yet. Start a new chat to create one.</p> : null}
         </div>
       </section>
 
       <footer className="sidebar-footer">
-        <div className="sidebar-footer-user">
-          <strong title={sessionUser.email}>{sessionUser.email}</strong>
-          <p>{statusLine}</p>
+        <div className="sidebar-profile-card">
+          <div className="sidebar-profile-avatar" aria-hidden="true">
+            {initial}
+          </div>
+          <div className="sidebar-profile-meta">
+            <strong>{userName}</strong>
+            <span>{planLabel} plan</span>
+          </div>
         </div>
         <button className="ghost-button" onClick={onLogout} type="button">
           Logout

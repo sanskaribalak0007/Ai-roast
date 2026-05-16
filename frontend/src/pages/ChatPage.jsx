@@ -1,4 +1,5 @@
 import Sidebar from "../components/chat/Sidebar";
+import WorkspaceToolTabs from "../components/chat/WorkspaceToolTabs";
 import WorkspaceHeader from "../components/chat/WorkspaceHeader";
 import PromptRibbon from "../components/chat/PromptRibbon";
 import MessagePanel from "../components/chat/MessagePanel";
@@ -33,10 +34,11 @@ function ChatPage(props) {
           renameValue={props.renameValue}
           renamingChatId={props.renamingChatId}
           sessionUser={props.sessionUser}
-          statusLine={props.statusLine}
         />
 
         <main className="workspace">
+          <WorkspaceToolTabs onNavigateTool={props.onNavigateTool} routeType={props.routeType} />
+
           {showChatWorkspace ? (
             <>
               <WorkspaceHeader

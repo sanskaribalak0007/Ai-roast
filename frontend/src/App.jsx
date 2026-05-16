@@ -17,12 +17,12 @@ import ResetPage from "./pages/ResetPage";
 import SharedChatPage from "./pages/SharedChatPage";
 import AuthPage from "./pages/AuthPage";
 import ChatPage from "./pages/ChatPage";
-import AuditPage from "./pages/AuditPage";
 
 function App() {
   const [route, setRoute] = useState(readRoute);
   const [session, setSession] = useState({ checked: false, user: null });
   const [authMode, setAuthMode] = useState("login");
+  const [authStep, setAuthStep] = useState("");
   const [authForm, setAuthForm] = useState(initialAuthForm);
   const [forgotForm, setForgotForm] = useState(initialForgotForm);
   const [resetForm, setResetForm] = useState(initialResetForm);
@@ -237,6 +237,14 @@ function App() {
     setAuthForm((current) => ({ ...current, [name]: value }));
   };
 
+  const handleSwitchAuthMode = (mode) => {
+    setAuthMode(mode);
+    setAuthStep("");
+    setAuthError("");
+    setAuthNotice("");
+    setAuthForm((current) => ({ ...current, otp: "" }));
+  };
+
   const handleForgotChange = (event) => {
     const { name, value } = event.target;
     setForgotForm((current) => ({ ...current, [name]: value }));
@@ -263,20 +271,37 @@ function App() {
         const response = await api.register({
           name: authForm.name,
           email: authForm.email,
-          password: authForm.password
+          password: authForm.password,
+          otp: authForm.otp
         });
 
-        setAuthNotice(response.message);
-        setAuthMode("login");
-        setAuthForm((current) => ({ ...current, password: "" }));
+        if (response.otpRequired) {
+          setAuthStep("register-otp");
+          setAuthNotice(response.message);
+        } else {
+          setAuthNotice(response.message);
+          setAuthMode("login");
+          setAuthStep("");
+          setAuthForm({
+            ...initialAuthForm,
+            email: authForm.email
+          });
+        }
       } else {
         const response = await api.login({
           email: authForm.email,
-          password: authForm.password
+          password: authForm.password,
+          otp: authForm.otp
         });
 
-        setSession({ checked: true, user: response.user });
-        setStatusLine("Session secured. Let the roasting begin.");
+        if (response.otpRequired) {
+          setAuthStep("login-otp");
+          setAuthNotice(response.message);
+        } else {
+          setSession({ checked: true, user: response.user });
+          setStatusLine("Session secured. Let the roasting begin.");
+          setAuthStep("");
+        }
       }
     } catch (error) {
       setAuthError(error.message);
@@ -585,6 +610,7 @@ function App() {
         authError={authError}
         authForm={authForm}
         authMode={authMode}
+        authStep={authStep}
         authNotice={authNotice}
         footer={footer}
         forgotForm={forgotForm}
@@ -593,8 +619,8 @@ function App() {
         onForgotChange={handleForgotChange}
         onForgotPassword={handleForgotPassword}
         onRegisterOrLogin={handleRegisterOrLogin}
+        onSwitchAuthMode={handleSwitchAuthMode}
         publicNav={publicNav}
-        setAuthMode={setAuthMode}
       />
     );
   }
@@ -650,7 +676,6 @@ function App() {
       selectedFile={selectedFile}
       sessionUser={session.user}
       shareNotice={shareNotice}
-      statusLine={statusLine}
       typingTarget={typingTarget}
       typingVisible={typingVisible}
     />

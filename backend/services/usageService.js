@@ -71,6 +71,7 @@ const buildAccessState = (user) => ({
     subscribed: Number(user.subscribed) === 1 ? 1 : 0,
     status: user.subscriptionStatus || "inactive",
     planKey: user.subscriptionPlanKey || "",
+    planLabel: SUBSCRIPTION_PLANS[user.subscriptionPlanKey]?.label || "Free",
     weeklyCreditsBalance: user.weeklyCreditsBalance || 0,
     currentEnd: user.subscriptionCurrentEnd
   },
