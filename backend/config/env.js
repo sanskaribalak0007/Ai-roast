@@ -32,7 +32,10 @@ const corsOrigins = [
   ].filter(Boolean))
 ];
 
-const allowNetlifyPreviews = process.env.ALLOW_NETLIFY_PREVIEWS === "true";
+// In production, allow Netlify deploys unless explicitly disabled.
+const allowNetlifyPreviews =
+  process.env.ALLOW_NETLIFY_PREVIEWS === "true" ||
+  (isProduction && process.env.ALLOW_NETLIFY_PREVIEWS !== "false");
 
 module.exports = {
   nodeEnv,

@@ -7,6 +7,7 @@ const connectMongo = require("connect-mongo");
 
 const env = require("./config/env");
 const { isOriginAllowed } = require("./utils/cors");
+const { applyCorsHeaders, corsHeadersMiddleware } = require("./middleware/corsHeaders");
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const publicRoutes = require("./routes/publicRoutes");
@@ -40,7 +41,7 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// cors() handles OPTIONS preflight for all routes (do not use app.options("*") — breaks Express 5).
+app.use(corsHeadersMiddleware(env));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
@@ -90,9 +91,12 @@ app.use((req, res) => {
 });
 
 app.use((error, req, res, next) => {
+  applyCorsHeaders(req, res, env);
+
   if (error.message === "CORS origin not allowed") {
     return res.status(403).json({
-      error: "CORS origin not allowed"
+      error: "CORS origin not allowed",
+      message: `Add ${req.headers.origin || "your frontend URL"} to CORS_ORIGINS on Render.`
     });
   }
 

@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const sendEmail = require("../utils/sendEmail");
+const sendEmailSafe = require("../utils/sendEmailSafe");
 const env = require("../config/env");
 const { buildAccessState, ensureWeeklyCredits } = require("../services/usageService");
 
@@ -39,13 +39,10 @@ exports.register = async (req,res)=>{
       password:hashedPassword
     });
 
-    await sendEmail(
-      email,
-      "Registration Successful",
-      "Thanks for registering on our platform"
-    );
+    // Do not block registration on SMTP (avoids infinite "Processing..." on deploy).
+    sendEmailSafe(email, "Registration Successful", "Thanks for registering on our platform");
 
-    res.json({message:"User Registered Successfully"});
+    return res.json({ message: "User Registered Successfully" });
 
   }catch(error){
 
@@ -135,13 +132,9 @@ exports.forgotPassword = async (req,res)=>{
 
     const resetLink = `${env.frontendUrl.replace(/\/$/, "")}/reset/${resetToken}`;
 
-    await sendEmail(
-      email,
-      "Password Reset",
-      `Reset your password here: ${resetLink}`
-    );
+    sendEmailSafe(email, "Password Reset", `Reset your password here: ${resetLink}`);
 
-    res.json({message:"Reset link sent to email"});
+    return res.json({ message: "Reset link sent to email" });
 
   }catch(error){
 

@@ -3,7 +3,11 @@
   publish = "dist"
 
 [build.environment]
+  # Must match your Render backend URL (no trailing slash).
   VITE_API_URL = "https://ai-roast-backend-8als.onrender.com"
+
+# If you upload dist/ manually, run:
+# set VITE_API_URL=https://ai-roast-backend-8als.onrender.com && npm run build
 
 [[redirects]]
   from = "/*"

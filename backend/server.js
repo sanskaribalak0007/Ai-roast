@@ -23,6 +23,9 @@ const startServer = async () => {
 
   app.listen(env.port, () => {
     console.log(`Server running on port ${env.port}`);
+    console.log(`[CORS] Allowed origins: ${env.corsOrigins.join(", ") || "(none — using Netlify preview rule in production)"}`);
+    console.log(`[CORS] Netlify previews: ${env.allowNetlifyPreviews ? "enabled" : "disabled"}`);
+    console.log(`[cookies] secure=${env.cookieSecure} sameSite=${env.cookieSameSite}`);
   });
 };
 

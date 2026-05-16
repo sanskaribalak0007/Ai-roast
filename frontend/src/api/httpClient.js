@@ -16,15 +16,35 @@ const extractErrorMessage = (data) => {
   return "Request failed";
 };
 
+const buildNetworkError = (error) => {
+  if (error?.name === "TypeError" || error?.message === "Failed to fetch") {
+    return new Error(
+      `Cannot reach API at ${appConfig.apiUrl}. Rebuild frontend with VITE_API_URL pointing to Render, and set CORS_ORIGINS on the backend.`
+    );
+  }
+
+  return error;
+};
+
 export const request = async (path, options = {}) => {
-  const response = await fetch(`${appConfig.apiUrl}${path}`, {
-    credentials: "include",
-    ...options,
-    headers: {
-      ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(options.headers || {})
-    }
-  });
+  if (!appConfig.apiUrl) {
+    throw new Error("VITE_API_URL is missing. Rebuild the frontend for production.");
+  }
+
+  let response;
+
+  try {
+    response = await fetch(`${appConfig.apiUrl}${path}`, {
+      credentials: "include",
+      ...options,
+      headers: {
+        ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(options.headers || {})
+      }
+    });
+  } catch (error) {
+    throw buildNetworkError(error);
+  }
 
   const data = await response.json().catch(() => ({}));
 
