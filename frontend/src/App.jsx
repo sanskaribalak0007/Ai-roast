@@ -281,6 +281,16 @@ function App() {
         setStatusLine("Session secured. Let the roasting begin.");
       }
     } catch (error) {
+      if (authMode === "register" && error.message === "User already exists") {
+        setAuthMode("login");
+        setAuthNotice("Account already exists. Please login with your email and password.");
+        setAuthForm({
+          ...initialAuthForm,
+          email: authForm.email
+        });
+        return;
+      }
+
       setAuthError(error.message);
     } finally {
       setLoadingAuth(false);

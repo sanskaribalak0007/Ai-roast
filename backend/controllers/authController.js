@@ -2,10 +2,11 @@ const bcrypt = require("bcryptjs");
 
 const User = require("../models/User");
 const { persistUserSession } = require("../utils/sessionHelpers");
+const env = require("../config/env");
 const { buildAccessState, ensureWeeklyCredits } = require("../services/usageService");
 
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
-const isVerifiedUser = (user) => user?.isEmailVerified !== false;
+const isVerifiedUser = (user) => Boolean(user) && user.isEmailVerified !== false;
 
 const serializeUser = (user) => ({
   id: String(user._id),
