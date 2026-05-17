@@ -190,3 +190,25 @@
     grid-template-columns: 1fr;
   }
 }
+
+.playground-project-name {
+  min-width: 180px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  padding: 11px 14px;
+  outline: none;
+}
+
+@media (max-width: 780px) {
+  .playground-toolbar-actions {
+    width: 100%;
+  }
+
+  .playground-project-name,
+  .playground-toolbar-actions .ghost-button,
+  .playground-toolbar-actions .primary-button {
+    width: 100%;
+  }
+}

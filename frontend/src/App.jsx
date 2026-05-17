@@ -229,6 +229,13 @@ function App() {
     setIsDraftChat(false);
   };
 
+  const openChatWorkspace = async (chatId) => {
+    await refreshHistory(chatId);
+    await syncActiveChat(chatId);
+    window.history.pushState({}, "", "/");
+    setRoute({ type: "auth", token: "" });
+  };
+
   const handleAuthChange = (event) => {
     const { name, value } = event.target;
     setAuthForm((current) => ({ ...current, [name]: value }));
@@ -621,6 +628,7 @@ function App() {
         setRoute({ type: nextView, token: "" });
       }}
       onNewChat={handleNewChat}
+      onOpenRoastChat={openChatWorkspace}
       onOpenChat={(chatId) => {
         setIsDraftChat(false);
         setActiveChatId(chatId);

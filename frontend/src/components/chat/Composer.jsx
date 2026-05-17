@@ -42,7 +42,16 @@ function Composer({ selectedFile, onClearFile, question, onQuestionChange, onKey
         </label>
 
         <button className="primary-button" disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Working..." : selectedFile ? "Upload and ask" : "Send message"}
+          {isSubmitting ? (
+            <span className="button-loader-wrap">
+              <span className="button-loader" aria-hidden="true" />
+              {selectedFile ? "Analyzing..." : "Thinking..."}
+            </span>
+          ) : selectedFile ? (
+            "Upload and ask"
+          ) : (
+            "Send message"
+          )}
         </button>
       </div>
     </form>

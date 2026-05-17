@@ -5,6 +5,7 @@ import PromptRibbon from "../components/chat/PromptRibbon";
 import MessagePanel from "../components/chat/MessagePanel";
 import Composer from "../components/chat/Composer";
 import { projectExamples } from "../constants/appData";
+import RoastPage from "./RoastPage";
 import ScraperPage from "./ScraperPage";
 import AuditPage from "./AuditPage";
 import BillingPage from "./BillingPage";
@@ -96,6 +97,7 @@ function ChatPage(props) {
           {props.routeType === "billing" ? (
             <BillingPage api={props.api} onRefreshSession={props.onRefreshSession} sessionUser={props.sessionUser} />
           ) : null}
+          {props.routeType === "roast" ? <RoastPage api={props.api} onOpenInChat={props.onOpenRoastChat} /> : null}
           {props.routeType === "playground" ? <CodePlaygroundPage /> : null}
           {props.routeType === "scraper" ? <ScraperPage onScrape={props.onScrape} /> : null}
           {props.routeType === "audit" ? <AuditPage onAudit={props.onAudit} /> : null}

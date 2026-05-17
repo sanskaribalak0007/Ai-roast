@@ -1,5 +1,6 @@
 const TOOL_ITEMS = [
   { key: "auth", label: "Chat" },
+  { key: "roast", label: "Roast" },
   { key: "billing", label: "Billing" },
   { key: "scraper", label: "Scraper" },
   { key: "audit", label: "Page Audit" },
