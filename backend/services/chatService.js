@@ -128,7 +128,7 @@ Respond JSON:
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: env.geminiModel,
     contents: [
       { role: "user", parts: [{ text: prompt }] },
       ...buildHistoryPayload(messages)

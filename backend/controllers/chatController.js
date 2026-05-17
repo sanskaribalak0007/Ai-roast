@@ -24,6 +24,24 @@ const ai = new GoogleGenAI({
   apiKey: env.geminiApiKey,
 });
 
+const buildAiErrorMessage = (error, fallback) => {
+  const message = error?.message || fallback;
+
+  if (/api key|permission|forbidden|unauthorized|quota|rate limit/i.test(message)) {
+    return message;
+  }
+
+  if (/model/i.test(message)) {
+    return `Gemini model error: ${message}`;
+  }
+
+  if (/cloudinary/i.test(message)) {
+    return `Cloudinary error: ${message}`;
+  }
+
+  return fallback;
+};
+
 exports.askAI = async (req, res) => {
   try {
     const { question, chatId } = req.body;
@@ -80,7 +98,7 @@ exports.askAI = async (req, res) => {
     console.log("Gemini Error:", error.message);
 
     return res.status(error.message?.includes("limit") ? 403 : 500).json({
-      error: error.message?.includes("limit") ? error.message : "AI error"
+      error: error.message?.includes("limit") ? error.message : buildAiErrorMessage(error, "AI error")
     });
   }
 };
@@ -136,7 +154,7 @@ exports.askFileAI = async (req, res) => {
     const promptText = question?.trim() || "Explain this file briefly for study.";
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: env.geminiModel,
       contents: buildFileAnalysisContents(file, promptText)
     });
 
@@ -184,7 +202,7 @@ exports.askFileAI = async (req, res) => {
         ? error.message
         : error.message?.includes("Timeout")
         ? "File analysis timed out. Try a smaller file or a shorter prompt."
-        : "File AI failed"
+        : buildAiErrorMessage(error, "File AI failed")
     });
   }
 };

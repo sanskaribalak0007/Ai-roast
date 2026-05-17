@@ -77,6 +77,7 @@ module.exports = {
   sessionSecret: process.env.SESSION_SECRET,
   resetSecret: process.env.RESET_SECRET,
   geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   frontendUrl: normalizeOrigin(process.env.FRONTEND_URL) || corsOrigins[0] || "",
   corsOrigins,
   allowNetlifyPreviews,
